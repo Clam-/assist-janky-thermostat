@@ -1,0 +1,52 @@
+addon:
+  name: Jank Thermostat
+  version: "0.0.1"
+  slug: pigpio-addon
+  description: "Home Assistant add-on to control a heater using PID to control a motor to physically articulate the heater knob/valve"
+  arch:
+    - amd64
+    - armv7
+    - aarch64
+
+# Give container access to host GPIO
+#privileged: true
+devices:
+  - /dev/gpiomem
+
+options:
+  schedule: []
+  posmin: 1034
+  posmax: 24600
+  posmargin: 50
+  speed: 500000
+  updaterate: 15
+  updir: 1
+
+schema:
+  schedule:
+    type: array
+    title: Daily Schedule
+    items:
+      type: object
+      title: Entry
+      properties:
+        timestamp:
+          type: string
+          format: time
+          title: "Local Time"
+        temp:
+          type: number
+          title: "Target Temp"
+      required:
+        - at
+        - value
+  posmin: number
+  posmax: number
+  posmargin: number
+  speed: number
+  updaterate: integer
+  updir: 
+    type: integer
+    enum:
+      - 1
+      - -1
