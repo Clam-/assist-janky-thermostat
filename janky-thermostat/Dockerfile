@@ -1,22 +1,17 @@
-ARG BUILD_FROM=ghcr.io/home-assistant/amd64-base-python:3.11
-FROM ${BUILD_FROM}
+ARG BUILD_FROM
+FROM $BUILD_FROM
 
-# allow apt to run non-interactively
-ENV DEBIAN_FRONTEND=noninteractive
-
-# install pigpio C library, daemon & Python bindings
-RUN apt-get update \
- && apt-get install -y --no-install-recommends \
-      pigpio \
- && apt-get clean \
- && rm -rf /var/lib/apt/lists/*
+# Install requirements for add-on
+RUN apk add --no-cache pigpio --repository=http://dl-cdn.alpinelinux.org/alpine/edge/testing/
+RUN apk add --no-cache python3 py3-pip git build-base python3-dev
 
 # copy your code in
-WORKDIR /usr/src/my-addon
-COPY run.sh .
-COPY main.py .
+WORKDIR /usr/src/jank
+COPY . .
+
+RUN pip3 install --no-cache-dir --break-system-packages -r requirements.txt
 
 # ensure run.sh is executable
-RUN chmod a+x /usr/src/my-addon/run.sh
+RUN chmod a+x /usr/src/jank/run.sh
 
-CMD [ "/usr/src/my-addon/run.sh" ]
+CMD [ "/usr/src/jank/run.sh" ]

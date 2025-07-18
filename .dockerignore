@@ -1,0 +1,40 @@
+# Exclude Git metadata
+.git
+.gitignore
+
+# Python caches and artifacts
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+pip-wheel-metadata/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Local IDE/editor files
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Environment variable files
+.env
+*.env
+
+# Test outputs and temp files
+tests/
+*.log
+*.tmp
+
+# Home Assistant add-on runtime files (if ever present locally)
+data/
+options.json

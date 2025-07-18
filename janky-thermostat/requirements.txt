@@ -1,6 +1,5 @@
-adafruit-circuitpython-ads1x15
-adafruit-circuitpython-sht4x
-
 simple-pid
 dual-mc33926 @ git+https://github.com/Clam-/dual-mc33926@main
+pigpio-ads1115 @ git+https://github.com/Clam-/pigpio-ads1115@main
+pigpio-sht4x @ git+https://github.com/Clam-/pigpio-sht4x@main
 paho-mqtt

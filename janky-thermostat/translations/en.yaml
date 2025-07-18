@@ -1,0 +1,44 @@
+configuration:
+  schedule:
+    name: "Daily Schedule"
+    description: >
+      A list of time,temperature entries. Each line must be formatted
+      such as "HH:MM TEMPC". For example: 02:30 23.5 or 18:45 24.2. 
+      Time is 24hour and there is a space between the time and temp.
+
+  posmin:
+    name: "Minimum Position"
+    description: >
+      The most minimum position allowed by the actuator
+
+  posmax:
+    name: "Maximum Position"
+    description: >
+      The most maximum position allowed by the actuator
+
+  posmargin:
+    name: "Position Margin"
+    description: >
+      The leeway allowed +/- the target position to prevent jitter movements
+
+  speed:
+    name: "Motor Speed"
+    description: >
+      'Speed' of the motor
+
+  updaterate:
+    name: "Update Interval"
+    description: >
+      How often (in seconds) the PID generates a new position (how often 
+      the actuator moves)
+
+  updir:
+    name: "Direction of Travel"
+    description: >
+      1 means increasing position heat, -1 means decreasing values heat.
+      
+  blinka_forcechip:
+    name: Adafruit Blinka Chip Override
+    description: >
+      Force adafruit Blinka module to treat
+      this as the given chip ID (e.g. BCM2835).

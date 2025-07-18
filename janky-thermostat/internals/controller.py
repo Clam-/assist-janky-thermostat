@@ -3,15 +3,12 @@ from typing import Optional
 import queue
 import logging
 
-import busio
-import board
 from simple_pid import PID
-import adafruit_sht4x
+from pigpio_sht4x import SHT4x
 
-from ..mqtt.entity import MQTTEntity, ClimateEntity
-from ..mqtt.client import MQTTClient
+from mqtt import ClimateEntity, NumberEntity, MQTTClient, MQTTEntity
 from .motor import MoveThread
-from threadinghelpers import SHUTDOWN_EV
+from .threadinghelpers import SHUTDOWN_EV
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -23,23 +20,23 @@ def adj_tunings(t, index, data):
 class Controller:
     def __init__(self, client:MQTTClient, options):
         self.client = client
-        self.wantposition = client.register_entity(MQTTEntity("number", "wantposition", "Desired Position", on_command=self.handle_set_position, value=0))
-        self.actualposition = client.register_entity(MQTTEntity("number", "actualposition", "Actual Position"))
-        self.kp = client.register_entity(MQTTEntity("number", "kp", "Proportional", on_command=self.handle_set_proportional, value=1.5))
-        self.ki = client.register_entity(MQTTEntity("number", "ki", "Integral", on_command=self.handle_set_integral, value=1.2))
-        self.kd = client.register_entity(MQTTEntity("number", "kd", "Derivative", on_command=self.handle_set_derivative, value=1.1))
-        self.ap = client.register_entity(MQTTEntity("number", "ap", "Calc'd Prop."))
-        self.ai = client.register_entity(MQTTEntity("number", "ai", "Calc'd Int."))
-        self.ad = client.register_entity(MQTTEntity("number", "ad", "Calc'd Deriv."))
+        self.manualposition = client.register_entity(NumberEntity("manualposition", "Manual Position", min_value=0, max_value=30000, 
+                                                                on_command=self.handle_set_position, value=0, unit="mm"))
+        self.targetposition = client.register_entity(MQTTEntity("sensor", "targetposition", "Target Position", value=0, unit="mm"))
+        self.actualposition = client.register_entity(MQTTEntity("sensor", "actualposition", "Actual Position", unit="mm"))
+        self.kp = client.register_entity(NumberEntity("kp", "Proportional", min_value=0, max_value=64000, on_command=self.handle_set_proportional, value=1.5, unit="mm"))
+        self.ki = client.register_entity(NumberEntity("ki", "Integral", min_value=0, max_value=100, on_command=self.handle_set_integral, value=1.2, unit="mm"))
+        self.kd = client.register_entity(NumberEntity("kd", "Derivative", min_value=0, max_value=64000, on_command=self.handle_set_derivative, value=1.1, unit="mm"))
+        self.ap = client.register_entity(MQTTEntity("sensor", "ap", "Calc'd Prop.", unit="mm"))
+        self.ai = client.register_entity(MQTTEntity("sensor", "ai", "Calc'd Int.", unit="mm"))
+        self.ad = client.register_entity(MQTTEntity("sensor", "ad", "Calc'd Deriv.", unit="mm"))
         self.climate = ClimateEntity("climate", "Climate", on_temp_command=self.handle_set_temp, on_mode_command=self.handle_set_mode)
         client.register_entity(self.climate)
         
         self.pid = PID(self.kp.getFloat(), self.ki.getFloat(), self.kd.getFloat(), setpoint=self.climate.getFloat(),
                 output_limits=(options["posmin"], options["posmax"]), 
                 auto_mode=True if self.climate.mode == "auto" or self.climate.mode == "heat" else False)
-        i2c = busio.I2C(board.D1, board.D0)  # using i2c0
-        self.TEMP = adafruit_sht4x.SHT4x(i2c)
-        self.TEMP.mode = adafruit_sht4x.Mode.NOHEAT_HIGHPRECISION # type: ignore
+        self.TEMP = SHT4x()
         # PID extra options.
         self.pid.sample_time = options["updaterate"]  # set PID update rate UPDATE_RATE
         self.pid.proportional_on_measurement = False
@@ -49,43 +46,54 @@ class Controller:
         self.mover = MoveThread(self.motorq, self.controllerq, options)
         self.mover.start()
         self.schedule = options["schedule"]
+        self.lograte = options["lograte"]
         self.currentsched = ""
         self.mode: str = "off"
 
     def handle_set_temp(self, data):
-        #expect string, parse to float
-        self.pid.setpoint = float(data)
+        #expect json parsed data
+        self.pid.setpoint = data
+        self.climate.value = data
     
     def handle_set_mode(self, data):
         #expect string, it should be one of "off", "heat", or "auto"
         self.mode = data
+        if self.mode in ["heat", "auto"]:
+            self.pid.auto_mode = True
+        else:
+            self.pid.auto_mode = False
+        self.climate.mode = data
         
     def handle_set_position(self, data):
-        #expect string, parse to number
-        self.climate.mode = "off"
-        n = float(data)
-        self.wantposition.value = n
-        self.motorq.put(["P", float(n)])
+        #expect json parsed data
+        if data > 0:
+            self.climate.mode = "off"
+            self.mode = "off"
+            self.targetposition.value = data
+            self.motorq.put(["P", data])
     
-    # (Kp, Ki, Kd) expect string, parse to number
+    # (Kp, Ki, Kd) expect json parsed data
     def handle_set_proportional(self, data):
         self.pid.tunings = adj_tunings(self.pid.tunings, 0, data)
+        self.kp.value = data
         
     def handle_set_integral(self, data):
         self.pid.tunings = adj_tunings(self.pid.tunings, 1, data)
+        self.ki.value = data
     
     def handle_set_derivative(self, data):
         self.pid.tunings = adj_tunings(self.pid.tunings, 2, data)
+        self.kd.value = data
     
     def fetchsched(self, currtimestamp: str) -> Optional[dict]:
         """
-        Return the row whose 'schtime' is the latest time <= currtimestamp.
+        Return the row whose 'timestamp' is the latest time <= currtimestamp.
         Assumes:
-        - self.schedule is sorted ascending by row["schtime"] as "HH:MM".
+        - self.schedule is sorted ascending by row["timestamp"] as "HH:MM".
         """
         curr: Optional[dict] = None
         for row in self.schedule:
-            if curr is None or currtimestamp > row["schtime"]:
+            if curr is None or currtimestamp > row["timestamp"]:
                 curr = row
         if curr is None and self.schedule:
             # wrap to last entry of previous day if no pick.
@@ -104,15 +112,21 @@ class Controller:
     def loop(self):
         self.client.connect()
         lastupdate = time.monotonic()
-        lastschedcheck = 0
+        lastschedcheck = lastupdate
+        apos: int | None = None
         try:
             while not SHUTDOWN_EV.is_set():
                 # process queue
                 if not self.controllerq.empty():
                     try:
                         ev = self.controllerq.get_nowait()
-                        if ev[0] == "AP":
-                            self.actualposition.value = ev[1]
+                        size = 1
+                        while ev:
+                            if ev[0] == "AP":
+                                apos = ev[1]
+                            size+=1
+                            ev = self.controllerq.get_nowait()
+                        print(f"q size: {size}")
                     except queue.Empty: pass
                 currentupdate = time.monotonic()
                 currentschedcheck = time.monotonic()
@@ -122,25 +136,27 @@ class Controller:
                 newpos = self.pid(temp)
                 if newpos is not None: newpos = round(newpos)
                 if self.mode != "off" and newpos is not None:
-                    self.wantposition.value = newpos # store new location
+                    self.targetposition.value = newpos # store new location
                     # move to new setpoint
                     self.motorq.put(["P", newpos])
-                # Log stats...
-                self.climate.current_temperature = temp
-                self.climate.current_humidity = humidity
-                # log PID component values:
-                components = self.pid.components
-                self.ap.value = components[0]
-                self.ai.value = components[1]
-                self.ad.value = components[2]
-
                 SHUTDOWN_EV.wait(max(0.5 - (currentupdate-lastupdate), 0)) # sleep at most 0.5 secs... shouldn't be off the PID period by more than 0.5... probs...
                 lastupdate = currentupdate
-                if (currentschedcheck - lastschedcheck > 30):
+                if (currentschedcheck - lastschedcheck > self.lograte):
+                    # Log stats...
+                    self.climate.current_temperature = temp
+                    self.climate.current_humidity = humidity
+                    if apos is not None: 
+                        self.actualposition.value = apos
+                        apos = None
+                    # log PID component values:
+                    components = self.pid.components
+                    self.ap.value = components[0]
+                    self.ai.value = components[1]
+                    self.ad.value = components[2]
                     self.checkSetSchedule()
                     lastschedcheck = currentschedcheck
         except KeyboardInterrupt:
             SHUTDOWN_EV.set()
-            print("Exiting...")
-        _LOGGER.info("Main thread waiting for worker to finish…")
+            _LOGGER.info("Keyboard interrupt, exiting...")
+        _LOGGER.info("Main thread waiting for worker to finish...")
         self.mover.join(timeout=5)
