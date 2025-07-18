@@ -5,7 +5,7 @@ import time
 import logging
 
 import pigpio
-from .ads1115 import ADS1115
+from pigpio_ads1115 import ADS1115
 from dual_mc33926 import motors
 
 from .threadinghelpers import SHUTDOWN_EV
