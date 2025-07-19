@@ -30,7 +30,9 @@ class Controller:
         self.ap = client.register_entity(MQTTEntity("sensor", "ap", "Calc'd Prop.", unit="mm"))
         self.ai = client.register_entity(MQTTEntity("sensor", "ai", "Calc'd Int.", unit="mm"))
         self.ad = client.register_entity(MQTTEntity("sensor", "ad", "Calc'd Deriv.", unit="mm"))
-        self.climate = ClimateEntity("climate", "Climate", on_temp_command=self.handle_set_temp, on_mode_command=self.handle_set_mode, step=0.01)
+        self.desiredtemp = client.register_entity(MQTTEntity("sensor", "desiredtemp", "Desired Temp.", unit="°C"))
+        self.actualtemp = client.register_entity(MQTTEntity("sensor", "actualtemp", "Actual Temp.", unit="°C"))
+        self.climate = ClimateEntity("climate", "Climate", on_temp_command=self.handle_set_temp, on_mode_command=self.handle_set_mode)
         client.register_entity(self.climate)
         
         self.pid = PID(self.kp.getFloat(), self.ki.getFloat(), self.kd.getFloat(), setpoint=self.climate.getFloat(),
@@ -54,6 +56,7 @@ class Controller:
         #expect json parsed data
         self.pid.setpoint = data
         self.climate.value = data
+        self.desiredtemp.value = data
     
     def handle_set_mode(self, data):
         #expect string, it should be one of "off", "heat", or "auto"
@@ -145,6 +148,7 @@ class Controller:
                     # Log stats...
                     self.climate.current_temperature = temp
                     self.climate.current_humidity = humidity
+                    self.actualtemp.value = temp
                     if apos is not None: 
                         self.actualposition.value = apos
                         apos = None
