@@ -1,11 +1,11 @@
 import threading
-from .device import MQTTDevice
-
-from threading import Lock
 from typing import Optional, Callable, Union, Dict, Any
-import paho.mqtt.client as mqtt
 import json
 import logging
+
+import paho.mqtt.client as mqtt
+
+from .device import MQTTDevice
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -29,7 +29,7 @@ class MQTTEntity:
         self.device_class: Optional[str] = device_class
         self.retain: bool = retain
 
-        self._value_lock: Lock = Lock()
+        self._value_lock: threading.Lock = threading.Lock()
         self._value: Optional[Union[str, float]] = value
         self.client: Optional[mqtt.Client] = None
         self.state_topic: str = state_topic

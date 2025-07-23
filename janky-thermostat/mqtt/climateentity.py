@@ -1,7 +1,5 @@
 import json
-from threading import Lock
 import threading
-import traceback
 from typing import Any, Callable, Dict, List, Optional, Union
 import logging
 
@@ -38,12 +36,12 @@ class ClimateEntity(MQTTEntity):
         # Climate-specific extras
         self.step: float = step
         self.modes: List[str] = modes or []
-        self._mode_lock: Lock = Lock()
-        self._temp_lock: Lock = Lock()
+        self._mode_lock: threading.Lock = threading.Lock()
+        self._temp_lock: threading.Lock = threading.Lock()
         self._current_temperature: Optional[Union[str, float]] = None
         self._mode: Optional[str] = "off"
         self._on_mode_command: Optional[Callable[[str], None]] = on_mode_command
-        self._humidity_lock: Lock = Lock()
+        self._humidity_lock: threading.Lock = threading.Lock()
         self._current_humidity: Optional[Union[str, float]] = None
         self._init_mode_timer: threading.Timer | None = None
 

@@ -32,6 +32,7 @@ class Controller:
         self.ad = client.register_entity(MQTTEntity("sensor", "ad", "Calc'd Deriv.", unit="mm"))
         self.desiredtemp = client.register_entity(MQTTEntity("sensor", "desiredtemp", "Desired Temp.", unit="°C"))
         self.actualtemp = client.register_entity(MQTTEntity("sensor", "actualtemp", "Actual Temp.", unit="°C"))
+        self.actualhumid = client.register_entity(MQTTEntity("sensor", "actualhumidity", "Actual Humid.", unit="%"))
         self.climate = ClimateEntity("climate", "Climate", on_temp_command=self.handle_set_temp, on_mode_command=self.handle_set_mode)
         client.register_entity(self.climate)
         
@@ -96,7 +97,7 @@ class Controller:
         """
         curr: Optional[dict] = None
         for row in self.schedule:
-            if curr is None or currtimestamp > row["timestamp"]:
+            if currtimestamp > row["timestamp"]:
                 curr = row
         if curr is None and self.schedule:
             # wrap to last entry of previous day if no pick.
@@ -149,6 +150,7 @@ class Controller:
                     self.climate.current_temperature = temp
                     self.climate.current_humidity = humidity
                     self.actualtemp.value = temp
+                    self.actualhumid.value = humidity
                     if apos is not None: 
                         self.actualposition.value = apos
                         apos = None
