@@ -159,9 +159,9 @@ class Controller:
                         apos = None
                     # log PID component values:
                     components = self.pid.components
-                    self.ap.value = components[0]
-                    self.ai.value = components[1]
-                    self.ad.value = components[2]
+                    self.ap.value = round(components[0], 2)
+                    self.ai.value = round(components[1], 2)
+                    self.ad.value = round(components[2], 2)
                     self.checkSetSchedule()
                     lastschedcheck = currentschedcheck
         except KeyboardInterrupt:
