@@ -20,7 +20,10 @@ class ClimateEntity(MQTTEntity):
                  retain: bool = True,
                  value: Optional[Union[str, float]] = 0.0,
                  on_temp_command: Optional[Callable[[Union[str, float, dict]], None]] = None,
-                 on_mode_command: Optional[Callable[[str], None]] = None) -> None:
+                 on_mode_command: Optional[Callable[[str], None]] = None,
+                 max_temp: float = 30.0,
+                 min_temp: float = 15.0
+        ) -> None:
 
         super().__init__(
             domain="climate",
@@ -44,6 +47,8 @@ class ClimateEntity(MQTTEntity):
         self._humidity_lock: threading.Lock = threading.Lock()
         self._current_humidity: Optional[Union[str, float]] = None
         self._init_mode_timer: threading.Timer | None = None
+        self.max_temp = max_temp
+        self.min_temp = min_temp
 
     def _on_connect(self, client: mqtt.Client):
         super()._on_connect(client)
@@ -169,6 +174,8 @@ class ClimateEntity(MQTTEntity):
             "temperature_command_topic": self.command_topic,
             "temp_step": self.step,
             "modes": self.modes,
-            "current_humidity_topic": self.current_humidity_topic
+            "current_humidity_topic": self.current_humidity_topic,
+            "min_temp": self.min_temp,
+            "max_temp": self.max_temp,
         }
         return payload
