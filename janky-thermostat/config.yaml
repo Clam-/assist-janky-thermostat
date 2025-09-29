@@ -1,5 +1,5 @@
 name: Janky Thermostat
-version: "0.1.5"
+version: "0.1.6"
 slug: janky-thermostat
 description: "Home Assistant add-on to control a heater using PID to control a motor to physically articulate the heater knob/valve"
 arch:
