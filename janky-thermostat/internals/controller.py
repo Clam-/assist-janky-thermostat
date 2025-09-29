@@ -136,6 +136,8 @@ class Controller:
                 currentschedcheck = time.monotonic()
                 # measure
                 temp, humidity = self.TEMP.measurements
+                temp = round(temp, 2)
+                humidity = round(humidity, 2)
                 # Do things...
                 newpos = self.pid(temp)
                 if newpos is not None: newpos = round(newpos)
