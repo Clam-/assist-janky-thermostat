@@ -30,9 +30,9 @@ class Controller:
         self.ap = client.register_entity(MQTTEntity("sensor", "ap", "Calc'd Prop.", unit="mm"))
         self.ai = client.register_entity(MQTTEntity("sensor", "ai", "Calc'd Int.", unit="mm"))
         self.ad = client.register_entity(MQTTEntity("sensor", "ad", "Calc'd Deriv.", unit="mm"))
-        self.desiredtemp = client.register_entity(MQTTEntity("sensor", "desiredtemp", "Desired Temp.", unit="°C"))
-        self.actualtemp = client.register_entity(MQTTEntity("sensor", "actualtemperature", "Actual Temperature", unit="°C"))
-        self.actualhumid = client.register_entity(MQTTEntity("sensor", "actualhumidity", "Actual Humidity", unit="%"))
+        self.desiredtemp = client.register_entity(MQTTEntity("sensor", "desiredtemp", "Desired Temp.", unit="°C", device_class="temperature"))
+        self.actualtemp = client.register_entity(MQTTEntity("sensor", "actualtemperature", "Actual Temperature", unit="°C", device_class="temperature"))
+        self.actualhumid = client.register_entity(MQTTEntity("sensor", "actualhumidity", "Actual Humidity", unit="%", device_class="humidity"))
         self.climate = ClimateEntity("climate", "Climate", on_temp_command=self.handle_set_temp, on_mode_command=self.handle_set_mode, 
                                      min_temp=options.get("min_temp", 15.0), max_temp=options.get("max_temp", 30.0))
         client.register_entity(self.climate)
