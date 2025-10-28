@@ -30,7 +30,9 @@ from internals.controller import Controller
 
 # Read env vars set by run.sh
 BROKER   = os.getenv("MQTT_BROKER", "localhost")
-PORT     = int(os.getenv("MQTT_PORT", 1883))
+p = os.getenv("MQTT_PORT", "1883").strip()
+if p == "": p = "1833"
+PORT     = int(p)
 USERNAME = os.getenv("MQTT_USERNAME") or None
 PASSWORD = os.getenv("MQTT_PASSWORD") or None
 
